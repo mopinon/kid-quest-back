@@ -35,7 +35,7 @@ namespace KidQquest.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<RegisterResponse>> Register(RegisterRequest request)
+        public async Task<ActionResult<RegisterResponse>> Register([FromBody] RegisterRequest request)
         {
             RegisterResponse response;
 
@@ -46,7 +46,7 @@ namespace KidQquest.Controllers
             {
                 response = new RegisterResponse
                 {
-                    Status = RegisterResponseStatus.UserExist
+                    Status = RegisterResponseStatus.UserExists
                 };
                 return new JsonResult(response);
             }
@@ -67,6 +67,7 @@ namespace KidQquest.Controllers
             {
                 user.PasswordHash = passwordHash;
                 user.EmailConfirmationCode = code;
+                user.Name = request.Name;
 
                 _db.Update(user);
             }
@@ -77,6 +78,7 @@ namespace KidQquest.Controllers
                 user.PasswordHash = passwordHash;
                 user.Status = UserStatus.Unconfirmed;
                 user.EmailConfirmationCode = code;
+                user.Name = request.Name;
                 
                 _db.Users.Add(user);
             }
@@ -89,5 +91,184 @@ namespace KidQquest.Controllers
             };
             return new JsonResult(response);
         }
+        
+        [HttpPost("confirmEmail")]
+        public async Task<ActionResult<ConfirmEmailResponse>> ConfirmEmail([FromBody] ConfirmEmailRequest request)
+        {
+            ConfirmEmailResponse response;
+
+            var email = request.Email.ToLower();
+            var code = request.Code;
+            var user = _db.Users.FirstOrDefault(u => u.Email == email);
+            
+            if (user is null)
+            {
+                response = new ConfirmEmailResponse
+                {
+                    Status = ConfirmEmailResponseStatus.UserNotExists
+                };
+
+                return new JsonResult(response);
+            }
+
+            if (user.EmailConfirmationCode != code)
+            {
+                response = new ConfirmEmailResponse
+                {
+                    Status = ConfirmEmailResponseStatus.InvalidCode
+                };
+
+                return new JsonResult(response);
+            }
+
+            if (user.Status == UserStatus.Active)
+            {
+                response = new ConfirmEmailResponse
+                {
+                    Status = ConfirmEmailResponseStatus.UserAlreadyActive
+                };
+
+                return new JsonResult(response); 
+            }
+
+            user.Status = UserStatus.Active;
+            _db.Users.Update(user);
+            await _db.SaveChangesAsync();
+            
+            response = new ConfirmEmailResponse
+            {
+                Status = ConfirmEmailResponseStatus.Ok
+            };
+
+            return new JsonResult(response);
+        }
+
+        [HttpPost("login")]
+        public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+        {
+            LoginResponse response;
+
+            var email = request.Email.ToLower();
+            var password = request.Password;
+            var user = _db.Users.FirstOrDefault(e => e.Email == email);
+
+            if (user is null)
+            {
+                response = new LoginResponse
+                {
+                    Status = LoginResponseStatus.UserNotExists
+                };
+
+                return new JsonResult(response);
+            }
+
+            if (user.Status != UserStatus.Active)
+            {
+                response = new LoginResponse
+                {
+                    Status = LoginResponseStatus.UserNotActive
+                };
+
+                return new JsonResult(response); 
+            }
+
+            var isValidPassword = _hashService.VerifyHashedPassword(user.PasswordHash, password);
+            if (!isValidPassword)
+            {
+                response = new LoginResponse
+                {
+                    Status = LoginResponseStatus.InvalidPassword
+                };
+
+                return new JsonResult(response); 
+            }
+
+            var token = _jwtService.Encode(email);
+            response = new LoginResponse
+            {
+                Status = LoginResponseStatus.Ok,
+                Token = token
+            };
+
+            return new JsonResult(response);
+        }
+        
+        [HttpGet("loginWithToken")]
+        public async Task<ActionResult<LoginWithTokenResponse>> LoginWithToken([FromHeader] string token)
+        {
+            LoginWithTokenResponse response;
+
+            var isJwtToken = _jwtService.IsJwtToken(token);
+            if (!isJwtToken)
+            {
+                response = new LoginWithTokenResponse
+                {
+                    Status = LoginWithTokenResponseStatus.InvalidToken
+                };
+
+                return new JsonResult(response);
+            }
+
+            var email = _jwtService.Decode(token);
+            var user = _db.Users.FirstOrDefault(e => e.Email == email);
+
+            if (user is null)
+            {
+                response = new LoginWithTokenResponse
+                {
+                    Status = LoginWithTokenResponseStatus.UserNotExists
+                };
+
+                return new JsonResult(response);
+            }
+
+            if (user.Status != UserStatus.Active)
+            {
+                response = new LoginWithTokenResponse
+                {
+                    Status = LoginWithTokenResponseStatus.UserNotActive
+                };
+
+                return new JsonResult(response); 
+            }
+
+            response = new LoginWithTokenResponse
+            {
+                Status = LoginWithTokenResponseStatus.Ok,
+            };
+
+            return new JsonResult(response);
+        }
+
+        // [HttpPost("resetPassword")]
+        // public async Task<ActionResult<ResetPasswordResponse>> ResetPassword([FromBody] ResetPasswordRequest request)
+        // {
+        //     ResetPasswordResponse response;
+        //     
+        //     var email = request.Email.ToLower();
+        //     var user = _db.Users.FirstOrDefault(e => e.Email == email);
+        //
+        //     if (user is null)
+        //     {
+        //         response = new ResetPasswordResponse
+        //         {
+        //             Status = ResetPasswordResponseStatus.UserNotExists
+        //         };
+        //
+        //         return new JsonResult(response);
+        //     }
+        //
+        //     if (user.Status != UserStatus.Active)
+        //     {
+        //         response = new ResetPasswordResponse
+        //         {
+        //             Status = ResetPasswordResponseStatus.UserNotActive
+        //         };
+        //
+        //         return new JsonResult(response);
+        //     }
+        //     
+        //     
+        // }
     }
 }
