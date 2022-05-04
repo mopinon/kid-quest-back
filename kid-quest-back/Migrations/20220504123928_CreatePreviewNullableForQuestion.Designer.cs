@@ -3,15 +3,17 @@ using System;
 using KidQquest.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace kid_quest_back.Migrations
 {
     [DbContext(typeof(ApplicationContext))]
-    partial class ApplicationContextModelSnapshot : ModelSnapshot
+    [Migration("20220504123928_CreatePreviewNullableForQuestion")]
+    partial class CreatePreviewNullableForQuestion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -29,7 +31,7 @@ namespace kid_quest_back.Migrations
                     b.Property<bool>("IsRight")
                         .HasColumnType("boolean");
 
-                    b.Property<int?>("PreviewId")
+                    b.Property<int>("PreviewId")
                         .HasColumnType("integer");
 
                     b.Property<int>("QuestionId")
@@ -111,7 +113,7 @@ namespace kid_quest_back.Migrations
                         .HasColumnType("integer")
                         .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
-                    b.Property<int?>("PreviewId")
+                    b.Property<int>("PreviewId")
                         .HasColumnType("integer");
 
                     b.Property<int>("QuestionId")
@@ -331,7 +333,9 @@ namespace kid_quest_back.Migrations
                 {
                     b.HasOne("KidQquest.Models.PreviewModel", "Preview")
                         .WithMany()
-                        .HasForeignKey("PreviewId");
+                        .HasForeignKey("PreviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("KidQquest.Models.QuestionModel", "Question")
                         .WithMany("AnswerVariants")
@@ -386,7 +390,9 @@ namespace kid_quest_back.Migrations
                 {
                     b.HasOne("KidQquest.Models.PreviewModel", "Preview")
                         .WithMany()
-                        .HasForeignKey("PreviewId");
+                        .HasForeignKey("PreviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("KidQquest.Models.QuestionModel", "Question")
                         .WithOne("Fact")

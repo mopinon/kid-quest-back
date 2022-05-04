@@ -3,15 +3,17 @@ using System;
 using KidQquest.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace kid_quest_back.Migrations
 {
     [DbContext(typeof(ApplicationContext))]
-    partial class ApplicationContextModelSnapshot : ModelSnapshot
+    [Migration("20220504133557_FixNullableFact")]
+    partial class FixNullableFact
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -111,10 +113,10 @@ namespace kid_quest_back.Migrations
                         .HasColumnType("integer")
                         .HasAnnotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn);
 
-                    b.Property<int?>("PreviewId")
+                    b.Property<int>("PreviewId")
                         .HasColumnType("integer");
 
-                    b.Property<int>("QuestionId")
+                    b.Property<int?>("QuestionId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Text")
@@ -386,13 +388,13 @@ namespace kid_quest_back.Migrations
                 {
                     b.HasOne("KidQquest.Models.PreviewModel", "Preview")
                         .WithMany()
-                        .HasForeignKey("PreviewId");
+                        .HasForeignKey("PreviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("KidQquest.Models.QuestionModel", "Question")
                         .WithOne("Fact")
-                        .HasForeignKey("KidQquest.Models.FactModel", "QuestionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("KidQquest.Models.FactModel", "QuestionId");
 
                     b.Navigation("Preview");
 

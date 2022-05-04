@@ -301,4 +301,70 @@ public class AuthController : Controller
 
         return new JsonResult(response);
     }
+    
+    [HttpPost("confirmResetPassword")]
+    public async Task<ActionResult<ConfirmResetPasswordResponse>> ConfirmResetPassword([FromBody] ConfirmResetPasswordRequest request)
+    {
+        ConfirmResetPasswordResponse response;
+
+        var email = request.Email.ToLower();
+        var user = _db.Users.FirstOrDefault(e => e.Email == email);
+
+        if (user is null)
+        {
+            response = new ConfirmResetPasswordResponse
+            {
+                Status = ConfirmResetPasswordResponseStatus.UserNotExists
+            };
+
+            return new JsonResult(response);
+        }
+
+        if (user.Status != UserStatus.Active)
+        {
+            response = new ConfirmResetPasswordResponse
+            {
+                Status = ConfirmResetPasswordResponseStatus.UserNotActive
+            };
+
+            return new JsonResult(response);
+        }
+
+        var resetPasswordModel = _db.ResetPasswords
+            .Include(e => e.User)
+            .FirstOrDefault(e => e.Code == request.Code.ToUpper());
+
+        if (resetPasswordModel is null)
+        {
+            response = new ConfirmResetPasswordResponse
+            {
+                Status = ConfirmResetPasswordResponseStatus.InvalidCode
+            };
+
+            return new JsonResult(response);
+        }
+
+        if (resetPasswordModel.User.Email != email)
+        {
+            response = new ConfirmResetPasswordResponse
+            {
+                Status = ConfirmResetPasswordResponseStatus.WrongEmail
+            };
+
+            return new JsonResult(response);
+        }
+
+        user.PasswordHash = _hashService.HashPassword(request.NewPassword);
+        _db.ResetPasswords.Remove(resetPasswordModel);
+        _db.Users.Update(user);
+
+        await _db.SaveChangesAsync();
+
+        response = new ConfirmResetPasswordResponse
+        {
+            Status = ConfirmResetPasswordResponseStatus.Ok
+        };
+        
+        return new JsonResult(response);
+    }
 }
